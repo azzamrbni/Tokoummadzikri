@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Montserrat:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand Colors - Warna Bumi */
+    --brand-coklat-tua: #4E342E;
+    --brand-coklat-sedang: #795548;
+    --brand-coklat-muda: #EFEBE9;
+    
+    /* Accent Colors - Cheerful */
+    --aksen-kuning-cerah: #FFCA28;
+    --aksen-oranye-lembut: #FFAB91;
+    
+    /* Neutral Colors */
+    --netral-hitam: #212121;
+    --netral-abu-abu: #757575;
+    --netral-garis-batas: #E0E0E0;
+    --netral-putih-bg: #FAFAFA;
+    
+    --background: var(--netral-putih-bg);
+    --foreground: var(--netral-hitam);
+    --card: #FFFFFF;
+    --card-foreground: var(--netral-hitam);
+    --primary: var(--aksen-kuning-cerah);
+    --primary-foreground: var(--netral-hitam);
+    --secondary: var(--brand-coklat-sedang);
+    --secondary-foreground: #FFFFFF;
+    --muted: var(--brand-coklat-muda);
+    --muted-foreground: var(--netral-abu-abu);
+    --accent: var(--aksen-oranye-lembut);
+    --accent-foreground: var(--netral-hitam);
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: var(--netral-garis-batas);
+    --input: var(--netral-garis-batas);
+    --ring: var(--aksen-kuning-cerah);
+    --radius: 8px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  h1 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1.4;
+  }
+
+  p {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  small {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
