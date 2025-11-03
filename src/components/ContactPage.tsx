@@ -1,7 +1,7 @@
 import React, { useState } from "react"; // Tambahkan import React
 import { MapPin, Phone, Mail, MessageCircle, Send, Loader2 } from "lucide-react"; // Tambah Loader2
 import { Button } from "./Button"; // Path ini menunjuk ke src/components/ui/Button.tsx
-import { InputField } from "./Inputfield"; // Path ini menunjuk ke src/components/Inputfield.tsx
+import { InputField } from "./InputField"; // Path ini menunjuk ke src/components/Inputfield.tsx
 import { supabase } from '../supabaseClient'; // Path ini menunjuk ke src/supabaseClient.ts
 
 export function ContactPage() {
