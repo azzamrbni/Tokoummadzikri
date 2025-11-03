@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { MapPin, Phone, Mail, MessageCircle, Send } from "lucide-react";
-import { Button } from "./Button";
-import { InputField } from "./InputField";
+import React, { useState } from "react"; // Tambahkan import React
+import { MapPin, Phone, Mail, MessageCircle, Send, Loader2 } from "lucide-react"; // Tambah Loader2
+import { Button } from "./Button"; // Path ini menunjuk ke src/components/ui/Button.tsx
+import { InputField } from "./Inputfield"; // Path ini menunjuk ke src/components/Inputfield.tsx
+import { supabase } from '../supabaseClient'; // Path ini menunjuk ke src/supabaseClient.ts
 
 export function ContactPage() {
   const [formData, setFormData] = useState({
@@ -11,21 +12,58 @@ export function ContactPage() {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // STATE UNTUK LOADING
+  const [submitError, setSubmitError] = useState<string | null>(null); // STATE UNTUK ERROR
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // FUNGSI SUBMIT BARU YANG SUDAH TERHUBUNG KE SUPABASE
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In real implementation, this would send to backend
-    console.log("Form submitted:", formData);
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: "", contact: "", message: "" });
-    }, 3000);
+    if (isLoading) return; // TAMBAHKAN INI: Mencegah klik ganda saat loading
+    setIsLoading(true); // Mulai loading
+    setSubmitError(null); // Bersihkan error sebelumnya
+
+    try {
+      // Ini adalah kode untuk mengirim data ke Supabase
+      const { data, error } = await supabase
+        .from('kontak') // Pastikan nama tabel Anda 'kontak'
+        .insert([
+          { 
+            name: formData.name, 
+            contact: formData.contact, 
+            message: formData.message 
+          }
+        ]);
+
+      if (error) {
+        // Jika ada error dari Supabase, lemparkan
+        throw error;
+      }
+
+      // Jika SUKSES
+      console.log("Data terkirim:", data);
+      setIsSubmitted(true); // Tampilkan pesan sukses
+
+      // Gunakan logic timeout asli Anda untuk reset form
+      setTimeout(() => {
+        setIsSubmitted(false); // Sembunyikan pesan sukses
+        setFormData({ name: "", contact: "", message: "" }); // Kosongkan form
+      }, 3000); // Reset setelah 3 detik
+
+    } catch (error: any) {
+      // Jika GAGAL
+      console.error('Error mengirim data:', error);
+      setSubmitError(error.message || 'Terjadi kesalahan. Silakan coba lagi.');
+    
+    } finally {
+      // Apapun hasilnya, hentikan loading
+      setIsLoading(false);
+    }
   };
 
+  // --- KODE ANDA YANG LAIN (SAYA BIARKAN UTUH) ---
   const handleWhatsAppClick = () => {
     const message = encodeURIComponent("Halo, saya ingin bertanya tentang produk di Toko Umma Dzikri");
-    window.open(`https://wa.me/6281234567890?text=${message}`, '_blank');
+    window.open(`https://wa.me/6281234567890?text=${message}`, '_blank'); // Ganti 62... dengan no WA Anda
   };
 
   const marketplaces = [
@@ -210,7 +248,7 @@ export function ContactPage() {
                     <InputField
                       placeholder="Masukkan nama Anda"
                       value={formData.name}
-                      onChange={(value) => setFormData({ ...formData, name: value })}
+                      onChange={(value: string) => setFormData({ ...formData, name: value })} // Pertahankan logic asli Anda
                     />
                   </div>
 
@@ -221,7 +259,7 @@ export function ContactPage() {
                     <InputField
                       placeholder="email@example.com atau 08123456789"
                       value={formData.contact}
-                      onChange={(value) => setFormData({ ...formData, contact: value })}
+                      onChange={(value: string) => setFormData({ ...formData, contact: value })} // Pertahankan logic asli Anda
                     />
                   </div>
 
@@ -231,7 +269,7 @@ export function ContactPage() {
                     </label>
                     <textarea
                       value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })} // Pertahankan logic asli Anda
                       placeholder="Tulis pesan Anda di sini..."
                       rows={5}
                       className="w-full px-4 py-3 rounded-lg border border-[var(--netral-garis-batas)] focus:border-[var(--brand-coklat-sedang)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-coklat-sedang)]/20 transition-colors"
@@ -239,9 +277,28 @@ export function ContactPage() {
                     />
                   </div>
 
-                  <Button fullWidth type="submit">
-                    <Send className="h-5 w-5 mr-2 inline" />
-                    Kirim Pesan
+                  {/* TAMBAHKAN PESAN ERROR DI SINI */}
+                  {submitError && (
+                    <p className="text-sm text-red-600 text-center">
+                      Error: {submitError}
+                    </p>
+                  )}
+
+                  {/* MODIFIKASI TOMBOL DENGAN LOADING STATE */}
+                  <Button fullWidth type="submit"> 
+                    {/* ^ SAYA HAPUS 'disabled={isLoading}' DARI SINI */}
+                    
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 inline animate-spin" />
+                        Mengirim...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-5 w-5 mr-2 inline" />
+                        Kirim Pesan
+                      </>
+                    )}
                   </Button>
                 </form>
               )}
@@ -254,7 +311,7 @@ export function ContactPage() {
           <h2 className="text-[var(--brand-coklat-tua)] mb-6 text-center">Lokasi Toko</h2>
           <div className="bg-white rounded-lg overflow-hidden border border-[var(--netral-garis-batas)] aspect-[16/9]">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126920.23086159262!2d106.7537529!3d-6.4024859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69eb5eebbb5c1f%3A0x3207d2f355cd7e77!2sDepok%2C%20Kota%20Depok%2C%20Jawa%20Barat!5e0!3m2!1sid!2sid!4v1234567890123!5m2!1sid!2sid"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126920.23086159262!2d106.7537529!3d-6.4024859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69eb5eebbb5c1f%3A0x3207d2f355cd7e77!2sDepok%2C%20Kota%20Depok%2C%2Tawa%20Barat!5e0!3m2!1sid!2sid!4v1234567890123!5m2!1sid!2sid"
               width="100%"
               height="100%"
               style={{ border: 0 }}
@@ -272,3 +329,8 @@ export function ContactPage() {
     </div>
   );
 }
+
+
+
+
+
