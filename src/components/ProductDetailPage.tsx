@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ChevronRight, ShoppingCart, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
-import { Button } from "./ui/Button"; // Sesuaikan path jika perlu
+import { Button } from "./Button"; // Sesuaikan path jika perlu
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Link, useParams } from "react-router-dom"; 
 // import { supabase } from '../supabaseClient'; // <-- DIHAPUS
