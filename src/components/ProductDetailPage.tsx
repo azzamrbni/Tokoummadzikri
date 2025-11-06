@@ -2,57 +2,50 @@ import { useState, useEffect } from "react";
 import { ChevronRight, ShoppingCart, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "./ui/Button"; // Sesuaikan path jika perlu
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Link, useParams } from "react-router-dom"; // <-- IMPORT Link & useParams
-import { supabase } from '../supabaseClient'; // <-- IMPORT SUPABASE
+import { Link, useParams } from "react-router-dom"; 
+// import { supabase } from '../supabaseClient'; // <-- DIHAPUS
 
-// Definisikan tipe data Produk (sesuai database)
+// Alamat API Backend Anda
+const API_URL = 'https://api-tokoummadzikri.duckdns.org';
+
 interface Product {
   id: number;
   title: string;
   description: string;
   category: string;
   image: string;
-  images?: string[]; // (text[] di Supabase)
-  ingredients?: string;
-  nutrition?: string;
-  servingSuggestion?: string;
-  benefits?: string[]; // (text[] di Supabase)
-  price: string; // Tambahkan price
+  images?: string[]; 
 }
 
 export function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { id } = useParams<{ id: string }>(); // Mengambil 'id' dari URL
+  const { id } = useParams<{ id: string }>(); 
   const [selectedImage, setSelectedImage] = useState(0);
 
+  // --- (DIUBAH) FUNGSI MENGAMBIL DATA ---
   useEffect(() => {
     async function fetchProduct() {
-      if (!id) return; // Jika tidak ada ID, jangan lakukan apa-apa
-
+      if (!id) return; 
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('produk')
-        .select('*')
-        .eq('id', id) // Cari produk yang ID-nya cocok
-        .single(); // Ambil satu saja
-
-      if (error) {
-        console.error('Error fetching product:', error);
-      } else if (data) {
+      try {
+        const response = await fetch(`${API_URL}/produk/${id}`);
+        if (!response.ok) throw new Error('Produk tidak ditemukan');
+        const data = await response.json();
         setProduct(data as Product);
+      } catch (error: any) {
+        console.error('Error fetching product:', error);
       }
       setIsLoading(false);
     }
 
     fetchProduct();
-  }, [id]); // Jalankan efek ini setiap kali 'id' di URL berubah
+  }, [id]); 
 
-  // --- Ambil gambar dari 'images' (array) atau 'image' (tunggal) ---
-  // Pastikan productImages adalah array yang valid
+  // Sisanya (logika gambar, handle click, JSX) sebagian besar tetap sama
   const productImages = product?.images && product.images.length > 0 
     ? product.images 
-    : (product?.image ? [product.image] : []); // Fallback ke image utama
+    : (product?.image ? [product.image] : []); 
 
   const handleWhatsAppClick = () => {
     if (!product) return;
@@ -64,7 +57,6 @@ export function ProductDetailPage() {
     window.open('https://shopee.co.id', '_blank');
   };
 
-  // Tampilan Loading
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-[70vh]">
@@ -73,7 +65,6 @@ export function ProductDetailPage() {
     );
   }
 
-  // Tampilan Produk Tidak Ditemukan
   if (!product) {
     return (
       <div className="flex justify-center items-center h-[70vh]">
@@ -82,11 +73,10 @@ export function ProductDetailPage() {
     );
   }
 
-  // Tampilan Halaman Produk
   return (
     <div className="min-h-screen bg-[var(--netral-putih-bg)] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb (gunakan <Link>) */}
+        {/* Breadcrumb (tetap sama) */}
         <nav className="mb-6">
           <ol className="flex items-center gap-2 text-[var(--netral-abu-abu)]" style={{ fontSize: '14px' }}>
             <li>
@@ -109,11 +99,10 @@ export function ProductDetailPage() {
           </ol>
         </nav>
 
-        {/* Main Content - 2 Column Layout */}
+        {/* Main Content (tetap sama) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left Column - Image Gallery */}
           <div className="space-y-4">
-            {/* Main Image */}
             <div className="aspect-square w-full rounded-lg overflow-hidden bg-white border border-[var(--netral-garis-batas)]">
               <ImageWithFallback
                 src={productImages[selectedImage] || product.image}
@@ -121,8 +110,6 @@ export function ProductDetailPage() {
                 className="w-full h-full object-cover"
               />
             </div>
-
-            {/* Thumbnail Images */}
             {productImages.length > 1 && (
               <div className="grid grid-cols-4 gap-3">
                 {productImages.slice(0, 4).map((image, index) => (
@@ -148,70 +135,18 @@ export function ProductDetailPage() {
 
           {/* Right Column - Product Information */}
           <div className="space-y-6">
-            {/* Category Tag */}
             <div>
               <span className="inline-block px-4 py-2 bg-[var(--brand-coklat-muda)] text-[var(--brand-coklat-sedang)] rounded-full" style={{ fontSize: '14px', fontWeight: 500 }}>
                 {product.category}
               </span>
             </div>
-
-            {/* Product Name */}
             <h2 className="text-[var(--brand-coklat-tua)]">{product.title}</h2>
-            
-            {/* Price (Tambahkan ini) */}
-            <p className="text-3xl font-bold text-[var(--brand-coklat-sedang)]">
-              {`Rp ${parseInt(product.price).toLocaleString('id-ID')}`}
-            </p>
-
-            {/* Description */}
             <div className="prose prose-sm max-w-none">
               <p className="text-[var(--netral-hitam)]">
                 {product.description}
               </p>
             </div>
-
-            {/* Key Information Block */}
-            <div className="bg-white rounded-lg border border-[var(--netral-garis-batas)] p-6 space-y-4">
-              <h3 className="text-[var(--brand-coklat-tua)] pb-2 border-b border-[var(--netral-garis-batas)]">
-                Informasi Produk
-              </h3>
-
-              {product.ingredients && (
-                <div>
-                  <h4 className="text-[var(--brand-coklat-sedang)] mb-2">Bahan:</h4>
-                  <p className="text-[var(--netral-hitam)]">{product.ingredients}</p>
-                </div>
-              )}
-
-              {product.nutrition && (
-                <div>
-                  <h4 className="text-[var(--brand-coklat-sedang)] mb-2">Nilai Gizi:</h4>
-                  <p className="text-[var(--netral-hitam)]">{product.nutrition}</p>
-                </div>
-              )}
-
-              {product.servingSuggestion && (
-                <div>
-                  <h4 className="text-[var(--brand-coklat-sedang)] mb-2">Saran Penyajian:</h4>
-                  <p className="text-[var(--netral-hitam)]">{product.servingSuggestion}</p>
-                </div>
-              )}
-
-              {product.benefits && product.benefits.length > 0 && (
-                <div>
-                  <h4 className="text-[var(--brand-coklat-sedang)] mb-2">Manfaat:</h4>
-                  <ul className="space-y-2">
-                    {product.benefits.map((benefit, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <CheckCircle className="h-5 w-5 text-[var(--aksen-kuning-cerah)] flex-shrink-0 mt-0.5" />
-                        <span className="text-[var(--netral-hitam)]">{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
+        
             {/* CTA Buttons */}
             <div className="space-y-3 pt-4">
               <Button fullWidth onClick={handleShopeeClick}>

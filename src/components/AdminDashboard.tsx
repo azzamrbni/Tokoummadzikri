@@ -6,24 +6,22 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Navbar } from './Navbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; 
+// import { supabase } from '../supabaseClient'; // <-- DIHAPUS
 
-// Interface Produk (pastikan 'images' ada)
+// Alamat API Backend Anda di DigitalOcean
+const API_URL = 'https://api-tokoummadzikri.duckdns.org';
+
+// Interface Produk (tetap sama)
 interface Product {
   id: number;
   title: string;
   description: string;
   price: string;
   category: string;
-  image: string; // URL Gambar utama/thumbnail
-  images?: string[]; // (text[] di Supabase) Array URL galeri
-  ingredients?: string;
-  nutrition?: string;
-  servingSuggestion?: string;
-  benefits?: string[];
+  image: string;
+  images?: string[];
 }
 
-// Data form, tanpa ID
 type ProductFormData = Omit<Product, 'id' | 'created_at'>;
 
 export function AdminDashboard() {
@@ -31,14 +29,12 @@ export function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
-  // State untuk form
   const [formData, setFormData] = useState<ProductFormData>({
     title: "", description: "", price: "", category: "", image: "", images: []
   });
   
-  // (DIUBAH) State untuk BANYAK file
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
-  const [filePreviews, setFilePreviews] = useState<string[]>([]); // Array untuk preview
+  const [filePreviews, setFilePreviews] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(true); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
@@ -46,38 +42,32 @@ export function AdminDashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
-  const categories = [
-    "Souvenir",
-    "Pakaian",
-    "Makanan & Minuman"
-  ];
+  const categories = ["Souvenir", "Pakaian", "Makanan & Minuman"];
 
-  // --- FUNGSI MENGAMBIL DATA ---
+  // --- (DIUBAH) FUNGSI MENGAMBIL DATA ---
   useEffect(() => {
     fetchProducts();
   }, []);
 
   async function fetchProducts() {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('produk')
-      .select('*')
-      .order('id', { ascending: false }); 
-
-    if (error) {
-      console.error('Error fetching products:', error);
-    } else if (data) {
+    try {
+      const response = await fetch(`${API_URL}/produk`);
+      if (!response.ok) throw new Error('Gagal mengambil data produk');
+      const data = await response.json();
       setProducts(data as Product[]);
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      alert(error.message);
     }
     setIsLoading(false);
   }
   
-  // --- FUNGSI MODAL ---
+  // --- FUNGSI MODAL (Sebagian besar tetap sama) ---
   const resetModalState = () => {
     setShowModal(false);
     setEditingProduct(null);
     setFormData({ title: "", description: "", price: "", category: "", image: "", images: [] });
-    // (DIUBAH) Bersihkan preview URL yang lama
     filePreviews.forEach(url => URL.revokeObjectURL(url));
     setUploadingFiles([]);
     setFilePreviews([]);
@@ -93,7 +83,7 @@ export function AdminDashboard() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    setFormData({ // Set form dengan data yang ada
+    setFormData({
       title: product.title,
       description: product.description,
       price: product.price,
@@ -101,36 +91,35 @@ export function AdminDashboard() {
       image: product.image,
       images: product.images || []
     });
-    setUploadingFiles([]); // Reset file upload
-    // (DIUBAH) Tampilkan semua gambar yang ada
+    setUploadingFiles([]); 
     setFilePreviews(product.images || (product.image ? [product.image] : [])); 
     setShowModal(true);
   };
 
-  // --- FUNGSI HAPUS (TETAP SAMA) ---
+  // --- (DIUBAH) FUNGSI HAPUS ---
   const handleDelete = async (id: number) => {
     if (confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
-      // (Nanti: Hapus juga file dari Storage)
       try {
-        const { error } = await supabase.from('produk').delete().eq('id', id); 
-        if (error) throw error;
+        const response = await fetch(`${API_URL}/produk/${id}`, {
+          method: 'DELETE'
+        });
+  
+        if (!response.ok) throw new Error('Gagal menghapus produk');
+  
         setProducts(products.filter(p => p.id !== id));
       } catch (error: any) {
+        console.error('Error deleting product:', error);
         alert(error.message);
       }
     }
   };
 
-  // --- (DIUBAH) FUNGSI SAAT FILE DIPILIH (BISA BANYAK) ---
+  // --- FUNGSI SAAT FILE DIPILIH (Tetap sama) ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Bersihkan preview lama
     filePreviews.forEach(url => URL.revokeObjectURL(url));
-
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      setUploadingFiles(files); // Simpan File objects
-      
-      // Buat preview URLs baru
+      setUploadingFiles(files); 
       const previewUrls = files.map(file => URL.createObjectURL(file));
       setFilePreviews(previewUrls);
     } else {
@@ -145,78 +134,63 @@ export function AdminDashboard() {
     if (isSubmitting) return; 
     setIsSubmitting(true);
 
-    let mainImageUrl: string = formData.image; // URL gambar utama
-    let galleryImageUrls: string[] = formData.images || []; // Array URL galeri
-
     try {
-      // 1. CEK JIKA ADA FILE BARU YANG DI-UPLOAD
-      if (uploadingFiles.length > 0) {
-        
-        // Buat array berisi "janji" untuk setiap upload
-        const uploadPromises = uploadingFiles.map(file => {
-          const fileName = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
-          return supabase.storage
-            .from('gambar_produk') // Bucket Anda
-            .upload(fileName, file);
+      // 1. Buat FormData
+      // FormData adalah cara untuk mengirim file + teks ke API
+      const data = new FormData();
+      
+      // 2. Tambahkan semua data teks
+      data.append('title', formData.title);
+      data.append('description', formData.description);
+      data.append('price', formData.price);
+      data.append('category', formData.category);
+      // (Tambahkan kolom lain jika ada, misal ingredients, benefits)
+
+      // 3. Tambahkan semua file BARU
+      uploadingFiles.forEach(file => {
+        data.append('files', file); // 'files' harus cocok dengan `upload.array('files')` di server
+      });
+
+      // 4. Jika MENGEDIT dan TIDAK ADA file baru, kita harus kirim URL lama
+      if (editingProduct && uploadingFiles.length === 0) {
+        data.append('image', formData.image);
+        (formData.images || []).forEach(imgUrl => {
+          data.append('images', imgUrl);
         });
-
-        // Jalankan semua "janji" upload secara bersamaan
-        const uploadResults = await Promise.all(uploadPromises);
-
-        // Cek jika ada error saat upload
-        const uploadError = uploadResults.find(result => result.error);
-        if (uploadError) throw uploadError.error;
-
-        // Ambil semua URL publik dari hasil upload
-        galleryImageUrls = uploadResults.map(result => {
-          const { data } = supabase.storage
-            .from('gambar_produk')
-            .getPublicUrl(result.data!.path); // Ambil path dari data hasil upload
-          return data.publicUrl;
-        });
-
-        // Set gambar utama (thumbnail) sebagai gambar pertama dari yg di-upload
-        mainImageUrl = galleryImageUrls[0];
       }
 
-      // 2. SIAPKAN DATA UNTUK DATABASE
-      const productData = {
-        title: formData.title,
-        description: formData.description,
-        price: formData.price,
-        category: formData.category,
-        image: mainImageUrl, // Kolom 'image' (thumbnail)
-        images: galleryImageUrls, // Kolom 'images' (array galeri)
-        // (Tambahkan kolom lain jika perlu)
-        ingredients: formData.ingredients,
-        nutrition: formData.nutrition,
-        servingSuggestion: formData.servingSuggestion,
-        benefits: formData.benefits
-      };
-
-      // 3. KIRIM DATA KE TABEL 'produk'
+      // 5. Kirim ke API (POST untuk Tambah, PUT untuk Edit)
+      let response: Response;
       if (editingProduct) {
         // --- LOGIKA UPDATE (EDIT) ---
-        const { data, error } = await supabase
-          .from('produk')
-          .update(productData)
-          .eq('id', editingProduct.id)
-          .select() 
-          .single();
-        
-        if (error) throw error;
-        setProducts(products.map(p => (p.id === editingProduct.id ? data : p)));
+        response = await fetch(`${API_URL}/produk/${editingProduct.id}`, {
+          method: 'PUT',
+          body: data, // Kirim FormData
+          // JANGAN set 'Content-Type', browser akan otomatis
+        });
+
+        if (!response.ok) throw new Error('Gagal meng-update produk');
+
+        const updatedProduct = await response.json();
+        setProducts(products.map(p => (p.id === editingProduct.id ? updatedProduct : p)));
 
       } else {
         // --- LOGIKA INSERT (TAMBAH BARU) ---
-        const { data, error } = await supabase
-          .from('produk')
-          .insert(productData)
-          .select()
-          .single();
+        if (uploadingFiles.length === 0) {
+          alert("Silakan pilih gambar produk.");
+          setIsSubmitting(false);
+          return;
+        }
 
-        if (error) throw error;
-        setProducts([data, ...products]);
+        response = await fetch(`${API_URL}/produk`, {
+          method: 'POST',
+          body: data, // Kirim FormData
+        });
+
+        if (!response.ok) throw new Error('Gagal menambah produk');
+
+        const newProduct = await response.json();
+        setProducts([newProduct, ...products]);
       }
 
       resetModalState();
@@ -240,12 +214,13 @@ export function AdminDashboard() {
     navigate('/');
   };
 
+  // --- JSX (Tampilan) tidak ada perubahan ---
   return (
     <>
       <Navbar />
       <div className="min-h-screen bg-[var(--netral-putih-bg)] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* ... Header (tetap sama) ... */}
+          {/* Header */}
           <div className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-[var(--brand-coklat-tua)] mb-2">Admin Dashboard</h1>
@@ -257,7 +232,7 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          {/* ... Tabel Produk (tetap sama) ... */}
+          {/* Tabel Produk */}
           <div className="bg-white rounded-lg border border-[var(--netral-garis-batas)] overflow-hidden">
             <div className="overflow-x-auto">
               {isLoading ? (
@@ -266,7 +241,7 @@ export function AdminDashboard() {
                 </div>
               ) : (
                 <table className="w-full">
-                  {/* ... thead ... */}
+                  {/* thead */}
                   <thead className="bg-[var(--brand-coklat-muda)]">
                     <tr>
                       <th className="px-6 py-4 text-left text-[var(--brand-coklat-tua)]" style={{ fontFamily: 'Montserrat', fontWeight: 600 }}>Gambar</th>
@@ -276,6 +251,7 @@ export function AdminDashboard() {
                       <th className="px-6 py-4 text-left text-[var(--brand-coklat-tua)]" style={{ fontFamily: 'Montserrat', fontWeight: 600 }}>Aksi</th>
                     </tr>
                   </thead>
+                  {/* tbody */}
                   <tbody>
                     {products.length === 0 ? (
                       <tr><td colSpan={5} className="text-center py-12 text-[var(--netral-abu-abu)]">Belum ada produk.</td></tr>
@@ -314,10 +290,11 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          {/* --- MODAL (SUDAH DI-UPGRADE DENGAN UPLOAD FILE) --- */}
+          {/* Modal Tambah/Edit */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                {/* Header Modal */}
                 <div className="p-6 border-b border-[var(--netral-garis-batas)] flex justify-between items-center sticky top-0 bg-white">
                   <h3 className="text-[var(--brand-coklat-tua)]">
                     {editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
@@ -327,9 +304,9 @@ export function AdminDashboard() {
                   </button>
                 </div>
                 
+                {/* Form Modal */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   
-                  {/* ... InputField Nama, textarea Deskripsi, select Kategori, InputField Harga ... */}
                   <InputField
                     label="Nama Produk"
                     placeholder="Masukkan nama produk"
@@ -367,15 +344,14 @@ export function AdminDashboard() {
                     value={formData.price}
                     onChange={(value) => setFormData({ ...formData, price: value })}
                   />
-                  {/* (OPSIONAL) Tambahkan input untuk kolom baru Anda (ingredients, benefits, dll) di sini */}
+                  {/* (Anda bisa tambahkan input 'benefits', 'ingredients' dll di sini) */}
 
-
-                  {/* --- (DIUBAH) INPUT FILE GAMBAR (BISA BANYAK) --- */}
+                  {/* Input File Gambar */}
                   <div>
                     <label className="block mb-2 text-[var(--netral-hitam)]" style={{ fontFamily: 'Montserrat', fontWeight: 500 }}>
                       Gambar Produk
                     </label>
-                    {/* (BARU) Area Preview */}
+                    {/* Area Preview */}
                     <div className="flex flex-wrap gap-3 mb-3">
                       {filePreviews.length > 0 ? (
                         filePreviews.map((previewUrl, index) => (
@@ -389,7 +365,7 @@ export function AdminDashboard() {
                         </div>
                       )}
                     </div>
-                    {/* (DIUBAH) Tombol Upload */}
+                    {/* Tombol Upload */}
                     <label htmlFor="file-upload" className="w-full cursor-pointer p-4 rounded-lg border-2 border-dashed border-[var(--netral-garis-batas)] hover:border-[var(--brand-coklat-sedang)] text-[var(--netral-abu-abu)] hover:text-[var(--brand-coklat-sedang)] transition-colors flex flex-col items-center justify-center text-center">
                       <UploadCloud className="w-6 h-6 mb-1" />
                       <span className="text-sm">{uploadingFiles.length > 0 ? `${uploadingFiles.length} file dipilih` : "Pilih satu atau lebih file..."}</span>
@@ -399,15 +375,15 @@ export function AdminDashboard() {
                       type="file" 
                       className="hidden" 
                       accept="image/*" 
-                      multiple // <-- ATRIBUT PENTING
+                      multiple 
                       onChange={handleFileChange} 
                     />
                     {editingProduct && uploadingFiles.length === 0 && (
                       <p className="text-xs text-[var(--netral-abu-abu)] mt-2">Kosongkan jika tidak ingin mengganti gambar.</p>
                     )}
                   </div>
-                  {/* ------------------------------------------- */}
-
+                  
+                  {/* Tombol Submit/Batal */}
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" fullWidth disabled={isSubmitting}>
                       {isSubmitting ? (

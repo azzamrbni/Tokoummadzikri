@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient'; // Impor Supabase
-import { ProductCard } from './ProductCard'; // Impor kartu yang baru
+// import { supabase } from '../supabaseClient'; // <-- DIHAPUS
+import { ProductCard } from './ProductCard'; 
 import { Loader2 } from 'lucide-react';
 
-// Definisikan tipe data Produk (sesuai database)
+// Alamat API Backend Anda
+const API_URL = 'https://api-tokoummadzikri.duckdns.org';
+
 interface Product {
   id: number;
   title: string;
@@ -13,34 +15,32 @@ interface Product {
   image: string;
 }
 
-// Daftar kategori (sama seperti di AdminDashboard)
 const categories = [
-  "Semua", // Tambahkan "Semua" di awal
+  "Semua",
   "Souvenir",
   "Pakaian",
   "Makanan & Minuman"
 ];
 
 export function ProductsPage() {
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // Menyimpan semua produk
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]); // Untuk ditampilkan
-  const [selectedCategory, setSelectedCategory] = useState("Semua"); // Filter aktif
+  const [allProducts, setAllProducts] = useState<Product[]>([]); 
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]); 
+  const [selectedCategory, setSelectedCategory] = useState("Semua"); 
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Mengambil data dari Supabase saat halaman dibuka
+  // --- (DIUBAH) FUNGSI MENGAMBIL DATA ---
   useEffect(() => {
     async function fetchProducts() {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('produk')
-        .select('*')
-        .order('id', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching products:', error);
-      } else if (data) {
+      try {
+        const response = await fetch(`${API_URL}/produk`);
+        if (!response.ok) throw new Error('Gagal mengambil data produk');
+        const data = await response.json();
+        
         setAllProducts(data);
-        setFilteredProducts(data); // Awalnya, tampilkan semua
+        setFilteredProducts(data); 
+      } catch (error: any) {
+        console.error('Error fetching products:', error);
       }
       setIsLoading(false);
     }
@@ -48,24 +48,23 @@ export function ProductsPage() {
     fetchProducts();
   }, []);
 
-  // 2. Efek untuk mem-filter produk saat kategori diubah
+  // Efek filter (Tidak berubah)
   useEffect(() => {
     if (selectedCategory === "Semua") {
-      setFilteredProducts(allProducts); // Tampilkan semua
+      setFilteredProducts(allProducts); 
     } else {
-      // Filter berdasarkan kategori
       const filtered = allProducts.filter(
         (product) => product.category === selectedCategory
       );
       setFilteredProducts(filtered);
     }
-  }, [selectedCategory, allProducts]); // Jalankan jika kategori atau data produk berubah
+  }, [selectedCategory, allProducts]);
 
+  // --- JSX (Tampilan) tidak ada perubahan ---
   return (
     <div className="bg-[var(--netral-putih-bg)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        {/* Header Halaman (Opsional, jika Anda mau) */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-[var(--brand-coklat-tua)]">Koleksi Produk</h1>
           <p className="text-lg text-[var(--netral-abu-abu)] mt-2">Temukan semua kebutuhan Anda di sini</p>
@@ -98,12 +97,9 @@ export function ProductsPage() {
           </div>
         ) : (
           <>
-            {/* Jumlah Produk */}
             <p className="text-sm text-[var(--netral-abu-abu)] mb-4">
               Menampilkan {filteredProducts.length} produk
             </p>
-
-            {/* Grid Produk */}
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => (
@@ -117,7 +113,6 @@ export function ProductsPage() {
             )}
           </>
         )}
-
       </div>
     </div>
   );

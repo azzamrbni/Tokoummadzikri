@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ProductCard } from "./ProductCard";
-import { Button } from "./Button"; // <-- SAYA SUDAH PERBAIKI PATH-NYA (menghapus './ui/')
+import { Button } from "./Button"; 
 import { MapPin, ShoppingBag, Truck, Sparkles, Star, Loader2, Image as ImageIcon } from "lucide-react"; 
 import { Link } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; 
+// import { supabase } from '../supabaseClient'; // <-- DIHAPUS
 
-// Definisikan tipe data Produk (sesuai database)
+// Alamat API Backend Anda
+const API_URL = 'https://api-tokoummadzikri.duckdns.org';
+
 interface Product {
   id: number;
   title: string;
@@ -18,64 +20,48 @@ interface Product {
 export function HomePage() {
   const [latestProducts, setLatestProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-
-  // --- Data Kategori Anda ---
   const categories = ["Souvenir", "Pakaian", "Makanan & Minuman"];
-  
-  // --- State untuk menyimpan gambar kategori ---
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  // --- MENGAMBIL DATA PRODUK & GAMBAR KATEGORI ---
+  // --- (DIUBAH) MENGAMBIL SEMUA DATA DARI API BARU ---
   useEffect(() => {
-    // 1. Ambil 6 Produk Terbaru (Best Seller)
-    async function fetchLatestProducts() {
+    async function fetchAllData() {
       setIsLoadingProducts(true);
-      const { data, error } = await supabase
-        .from('produk')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6); 
-
-      if (error) console.error('Error fetching latest products:', error);
-      else if (data) setLatestProducts(data);
-      setIsLoadingProducts(false);
-    }
-
-    // 2. Ambil 1 gambar untuk setiap kategori
-    async function fetchCategoryImages() {
       setIsLoadingCategories(true);
-      const imagePromises = categories.map(categoryName => 
-        supabase
-          .from('produk')
-          .select('image') // Hanya ambil kolom gambar
-          .eq('category', categoryName) // Filter berdasarkan kategori
-          .limit(1) // Cukup 1 gambar
-          .single() // Ambil sebagai objek tunggal
-      );
       
       try {
-        const results = await Promise.all(imagePromises);
+        const response = await fetch(`${API_URL}/produk`);
+        if (!response.ok) throw new Error('Gagal mengambil data');
+        const allProducts: Product[] = await response.json();
+
+        // 1. Set Produk Terbaru (Best Seller)
+        // API Anda sudah mengurutkan, jadi kita ambil 6 pertama
+        setLatestProducts(allProducts.slice(0, 6)); 
+        setIsLoadingProducts(false);
+
+        // 2. Set Gambar Kategori
         const newCategoryImages: Record<string, string> = {};
-        
-        results.forEach((result, index) => {
-          const categoryName = categories[index];
-          if (result.data && result.data.image) {
-            newCategoryImages[categoryName] = result.data.image;
+        for (const categoryName of categories) {
+          // Cari produk pertama di 'allProducts' yang cocok dengan kategori
+          const productInCategory = allProducts.find(p => p.category === categoryName);
+          if (productInCategory) {
+            newCategoryImages[categoryName] = productInCategory.image;
           } else {
-            newCategoryImages[categoryName] = ""; // Fallback jika tidak ada gambar
+            newCategoryImages[categoryName] = ""; // Fallback
           }
-        });
-
+        }
         setCategoryImages(newCategoryImages);
-      } catch (error) {
-        console.error('Error fetching category images:', error);
-      }
-      setIsLoadingCategories(false);
-    }
+        setIsLoadingCategories(false);
 
-    fetchLatestProducts();
-    fetchCategoryImages();
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setIsLoadingProducts(false);
+        setIsLoadingCategories(false);
+      }
+    }
+    
+    fetchAllData();
   }, []); 
 
   // --- DATA STATIS (Tetap sama) ---
@@ -85,18 +71,16 @@ export function HomePage() {
     { icon: Sparkles, title: "Hemat Ongkir", description: "Belanja banyak kategori cukup di satu toko" },
     { icon: Truck, title: "Pengiriman Cepat", description: "Layanan pengiriman instan di hari yang sama" }
   ];
-
   const testimonials = [
     { name: "Rina Sari", text: "Saya sangat puas! Produk bayi yang dijual selalu fresh dan tidak expired. Sangat membantu untuk kebutuhan anak saya.", rating: 5 },
     { name: "Ahmad Hidayat", text: "Toko merchandise islami terlengkap di Depok. Cocok banget untuk oleh-oleh acara pengajian dan aqiqah.", rating: 5 },
     { name: "Fitri Handayani", text: "Pelayanan ramah dan cepat tanggap via WhatsApp. Pengiriman juga super cepat, pesan pagi sore sudah sampai!", rating: 5 }
   ];
-
   const handleShopeeClick = () => {
     window.open('https://shopee.co.id', '_blank');
   };
-  // ------------------------------
 
+  // --- JSX (Tampilan) tidak ada perubahan ---
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -122,7 +106,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Advantages Section (Tetap sama) */}
+      {/* Advantages Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -145,7 +129,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* --- Categories Section --- */}
+      {/* Categories Section */}
       <section className="py-16 bg-[var(--netral-putih-bg)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -163,17 +147,16 @@ export function HomePage() {
               {categories.map((categoryName) => (
                 <Link
                   key={categoryName}
-                  to="/produk" // Nanti bisa diubah ke /produk?kategori=Souvenir
+                  to="/produk"
                   className="group relative overflow-hidden rounded-lg aspect-square bg-white border-2 border-[var(--netral-garis-batas)] hover:border-[var(--aksen-kuning-cerah)] transition-all"
                 >
                   {categoryImages[categoryName] ? (
                     <img 
-                      src={categoryImages[categoryName]} // <-- Gambar dari Supabase
+                      src={categoryImages[categoryName]} 
                       alt={categoryName}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   ) : (
-                    // Fallback jika tidak ada gambar
                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
                       <ImageIcon className="w-16 h-16 text-gray-300" />
                     </div>
@@ -188,7 +171,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* --- Featured Products Section --- */}
+      {/* Featured Products Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -207,7 +190,7 @@ export function HomePage() {
               {latestProducts.map((product) => (
                 <ProductCard
                   key={product.id}
-                  product={product} // <-- Menggunakan komponen <ProductCard> baru
+                  product={product}
                 />
               ))}
             </div>
@@ -223,7 +206,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials Section (Tetap sama) */}
+      {/* Testimonials Section */}
       <section className="py-16 bg-[var(--netral-putih-bg)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -250,7 +233,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* About Teaser Section (Tetap sama) */}
+      {/* About Teaser Section */}
       <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-[var(--brand-coklat-tua)] mb-4">Tentang Toko Umma Dzikri</h2>
