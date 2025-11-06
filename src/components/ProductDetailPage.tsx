@@ -1,62 +1,104 @@
-import { useState } from "react";
-import { ChevronRight, ShoppingCart, MessageCircle, CheckCircle } from "lucide-react";
-import { Button } from "./Button";
+import { useState, useEffect } from "react";
+import { ChevronRight, ShoppingCart, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Button } from "./ui/Button"; // Sesuaikan path jika perlu
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { Link, useParams } from "react-router-dom"; // <-- IMPORT Link & useParams
+import { supabase } from '../supabaseClient'; // <-- IMPORT SUPABASE
 
-interface ProductDetailProps {
-  product: {
-    id: number;
-    title: string;
-    description: string;
-    category: string;
-    image: string;
-    images?: string[];
-    ingredients?: string;
-    nutrition?: string;
-    servingSuggestion?: string;
-    benefits?: string[];
-  };
-  onNavigate: (page: string) => void;
+// Definisikan tipe data Produk (sesuai database)
+interface Product {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  image: string;
+  images?: string[]; // (text[] di Supabase)
+  ingredients?: string;
+  nutrition?: string;
+  servingSuggestion?: string;
+  benefits?: string[]; // (text[] di Supabase)
+  price: string; // Tambahkan price
 }
 
-export function ProductDetailPage({ product, onNavigate }: ProductDetailProps) {
+export function ProductDetailPage() {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { id } = useParams<{ id: string }>(); // Mengambil 'id' dari URL
   const [selectedImage, setSelectedImage] = useState(0);
 
-  // Default images if not provided
-  const productImages = product.images || [product.image, product.image, product.image];
+  useEffect(() => {
+    async function fetchProduct() {
+      if (!id) return; // Jika tidak ada ID, jangan lakukan apa-apa
+
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('produk')
+        .select('*')
+        .eq('id', id) // Cari produk yang ID-nya cocok
+        .single(); // Ambil satu saja
+
+      if (error) {
+        console.error('Error fetching product:', error);
+      } else if (data) {
+        setProduct(data as Product);
+      }
+      setIsLoading(false);
+    }
+
+    fetchProduct();
+  }, [id]); // Jalankan efek ini setiap kali 'id' di URL berubah
+
+  // --- Ambil gambar dari 'images' (array) atau 'image' (tunggal) ---
+  // Pastikan productImages adalah array yang valid
+  const productImages = product?.images && product.images.length > 0 
+    ? product.images 
+    : (product?.image ? [product.image] : []); // Fallback ke image utama
 
   const handleWhatsAppClick = () => {
+    if (!product) return;
     const message = encodeURIComponent(`Halo, saya ingin bertanya tentang ${product.title}`);
     window.open(`https://wa.me/6281234567890?text=${message}`, '_blank');
   };
 
   const handleShopeeClick = () => {
-    // In real implementation, this would link to actual Shopee product
     window.open('https://shopee.co.id', '_blank');
   };
 
+  // Tampilan Loading
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <Loader2 className="h-12 w-12 text-[var(--brand-coklat-sedang)] animate-spin" />
+      </div>
+    );
+  }
+
+  // Tampilan Produk Tidak Ditemukan
+  if (!product) {
+    return (
+      <div className="flex justify-center items-center h-[70vh]">
+        <p className="text-xl text-[var(--netral-abu-abu)]">Produk tidak ditemukan.</p>
+      </div>
+    );
+  }
+
+  // Tampilan Halaman Produk
   return (
     <div className="min-h-screen bg-[var(--netral-putih-bg)] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
+        {/* Breadcrumb (gunakan <Link>) */}
         <nav className="mb-6">
           <ol className="flex items-center gap-2 text-[var(--netral-abu-abu)]" style={{ fontSize: '14px' }}>
             <li>
-              <button 
-                onClick={() => onNavigate('home')} 
-                className="hover:text-[var(--brand-coklat-tua)] transition-colors"
-              >
+              <Link to="/" className="hover:text-[var(--brand-coklat-tua)] transition-colors">
                 Beranda
-              </button>
+              </Link>
             </li>
             <ChevronRight className="h-4 w-4" />
             <li>
-              <button 
-                onClick={() => onNavigate('products')} 
-                className="hover:text-[var(--brand-coklat-tua)] transition-colors"
-              >
+              <Link to="/produk" className="hover:text-[var(--brand-coklat-tua)] transition-colors">
                 Produk
-              </button>
+              </Link>
             </li>
             <ChevronRight className="h-4 w-4" />
             <li className="text-[var(--netral-abu-abu)]">{product.category}</li>
@@ -74,32 +116,34 @@ export function ProductDetailPage({ product, onNavigate }: ProductDetailProps) {
             {/* Main Image */}
             <div className="aspect-square w-full rounded-lg overflow-hidden bg-white border border-[var(--netral-garis-batas)]">
               <ImageWithFallback
-                src={productImages[selectedImage]}
+                src={productImages[selectedImage] || product.image}
                 alt={product.title}
                 className="w-full h-full object-cover"
               />
             </div>
 
             {/* Thumbnail Images */}
-            <div className="grid grid-cols-4 gap-3">
-              {productImages.slice(0, 4).map((image, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImage === index
-                      ? 'border-[var(--aksen-kuning-cerah)] ring-2 ring-[var(--aksen-kuning-cerah)] ring-offset-2'
-                      : 'border-[var(--netral-garis-batas)] hover:border-[var(--brand-coklat-sedang)]'
-                  }`}
-                >
-                  <ImageWithFallback
-                    src={image}
-                    alt={`${product.title} ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
+            {productImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-3">
+                {productImages.slice(0, 4).map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImage === index
+                        ? 'border-[var(--aksen-kuning-cerah)] ring-2 ring-[var(--aksen-kuning-cerah)] ring-offset-2'
+                        : 'border-[var(--netral-garis-batas)] hover:border-[var(--brand-coklat-sedang)]'
+                    }`}
+                  >
+                    <ImageWithFallback
+                      src={image}
+                      alt={`${product.title} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right Column - Product Information */}
@@ -113,6 +157,11 @@ export function ProductDetailPage({ product, onNavigate }: ProductDetailProps) {
 
             {/* Product Name */}
             <h2 className="text-[var(--brand-coklat-tua)]">{product.title}</h2>
+            
+            {/* Price (Tambahkan ini) */}
+            <p className="text-3xl font-bold text-[var(--brand-coklat-sedang)]">
+              {`Rp ${parseInt(product.price).toLocaleString('id-ID')}`}
+            </p>
 
             {/* Description */}
             <div className="prose prose-sm max-w-none">
@@ -163,16 +212,6 @@ export function ProductDetailPage({ product, onNavigate }: ProductDetailProps) {
               )}
             </div>
 
-            {/* Quality Guarantee */}
-            <div className="bg-[var(--brand-coklat-muda)] rounded-lg p-4 border-l-4 border-[var(--aksen-kuning-cerah)]">
-              <p className="text-[var(--brand-coklat-tua)]" style={{ fontWeight: 500 }}>
-                ✓ Stok kami selalu baru & dicek berkala
-              </p>
-              <p className="text-[var(--netral-abu-abu)] mt-1">
-                Untuk info tanggal kedaluwarsa pasti, silakan chat kami melalui WhatsApp.
-              </p>
-            </div>
-
             {/* CTA Buttons */}
             <div className="space-y-3 pt-4">
               <Button fullWidth onClick={handleShopeeClick}>
@@ -184,31 +223,7 @@ export function ProductDetailPage({ product, onNavigate }: ProductDetailProps) {
                 Tanya via WhatsApp
               </Button>
             </div>
-
-            {/* Additional Info */}
-            <div className="pt-4 border-t border-[var(--netral-garis-batas)]">
-              <p className="text-[var(--netral-abu-abu)] text-center">
-                Produk 100% halal dan berkualitas
-              </p>
-            </div>
           </div>
-        </div>
-
-        {/* Related Products Section (Optional) */}
-        <div className="mt-16">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-[var(--brand-coklat-tua)]">Produk Terkait</h3>
-            <button 
-              onClick={() => onNavigate('products')}
-              className="text-[var(--brand-coklat-sedang)] hover:text-[var(--brand-coklat-tua)] transition-colors"
-              style={{ fontWeight: 500 }}
-            >
-              Lihat Semua →
-            </button>
-          </div>
-          <p className="text-[var(--netral-abu-abu)]">
-            Temukan produk lain dari kategori {product.category}
-          </p>
         </div>
       </div>
     </div>

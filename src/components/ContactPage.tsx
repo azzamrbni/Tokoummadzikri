@@ -80,12 +80,6 @@ export function ContactPage() {
       bgColor: "bg-green-500"
     },
     {
-      name: "TikTok Shop",
-      logo: "🎵",
-      url: "https://shop.tiktok.com",
-      bgColor: "bg-black"
-    },
-    {
       name: "Instagram",
       logo: "📸",
       url: "https://instagram.com",

@@ -1,0 +1,11 @@
+# Kunci Rahasia
+.env
+
+# Dependensi
+/node_modules
+
+# Log
+npm-debug.log*
+
+# Build TypeScript
+/dist

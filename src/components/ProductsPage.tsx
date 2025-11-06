@@ -1,105 +1,123 @@
-import { useState } from "react";
-import { ProductCard } from "./ProductCard";
-import { InputField } from "./InputField";
-import { Filter } from "lucide-react";
-import { productsData } from "../data/products";
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient'; // Impor Supabase
+import { ProductCard } from './ProductCard'; // Impor kartu yang baru
+import { Loader2 } from 'lucide-react';
 
-interface ProductsPageProps {
-  onProductClick: (productId: number) => void;
+// Definisikan tipe data Produk (sesuai database)
+interface Product {
+  id: number;
+  title: string;
+  description: string;
+  price: string;
+  category: string;
+  image: string;
 }
 
-export function ProductsPage({ onProductClick }: ProductsPageProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Semua");
+// Daftar kategori (sama seperti di AdminDashboard)
+const categories = [
+  "Semua", // Tambahkan "Semua" di awal
+  "Souvenir",
+  "Pakaian",
+  "Makanan & Minuman"
+];
 
-  const categories = [
-    "Semua",
-    "Sajadah & Perlengkapan Shalat",
-    "Al-Qur'an & Buku Islami",
-    "Pakaian Muslim",
-    "Wangi-wangian",
-    "Makanan & Minuman"
-  ];
+export function ProductsPage() {
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // Menyimpan semua produk
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]); // Untuk ditampilkan
+  const [selectedCategory, setSelectedCategory] = useState("Semua"); // Filter aktif
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredProducts = productsData.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "Semua" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // 1. Mengambil data dari Supabase saat halaman dibuka
+  useEffect(() => {
+    async function fetchProducts() {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('produk')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+      } else if (data) {
+        setAllProducts(data);
+        setFilteredProducts(data); // Awalnya, tampilkan semua
+      }
+      setIsLoading(false);
+    }
+
+    fetchProducts();
+  }, []);
+
+  // 2. Efek untuk mem-filter produk saat kategori diubah
+  useEffect(() => {
+    if (selectedCategory === "Semua") {
+      setFilteredProducts(allProducts); // Tampilkan semua
+    } else {
+      // Filter berdasarkan kategori
+      const filtered = allProducts.filter(
+        (product) => product.category === selectedCategory
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [selectedCategory, allProducts]); // Jalankan jika kategori atau data produk berubah
 
   return (
-    <div className="min-h-screen bg-[var(--netral-putih-bg)] py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-[var(--brand-coklat-tua)] mb-2">Semua Produk</h1>
-          <p className="text-[var(--netral-abu-abu)]">
-            Temukan produk islami pilihan untuk kebutuhan Anda
-          </p>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
-          <InputField
-            placeholder="Cari produk..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            icon
-          />
-
-          {/* Category Filter */}
-          <div className="flex items-start gap-4">
-            <div className="flex items-center gap-2 text-[var(--netral-abu-abu)] mt-2">
-              <Filter className="h-5 w-5" />
-              <span style={{ fontFamily: 'Montserrat', fontWeight: 500 }}>Kategori:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-lg transition-all ${
-                    selectedCategory === category
-                      ? 'bg-[var(--aksen-kuning-cerah)] text-[var(--netral-hitam)]'
-                      : 'bg-white border border-[var(--netral-garis-batas)] text-[var(--netral-abu-abu)] hover:border-[var(--brand-coklat-sedang)]'
-                  }`}
-                  style={{ fontFamily: 'Montserrat', fontWeight: selectedCategory === category ? 600 : 400 }}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Products Grid */}
-        <div className="mb-6">
-          <p className="text-[var(--netral-abu-abu)]">
-            Menampilkan {filteredProducts.length} produk
-          </p>
-        </div>
+    <div className="bg-[var(--netral-putih-bg)] min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                image={product.image}
-                title={product.title}
-                description={product.description}
-                showPrice={false}
-                onButtonClick={() => onProductClick(product.id)}
-              />
+        {/* Header Halaman (Opsional, jika Anda mau) */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-[var(--brand-coklat-tua)]">Koleksi Produk</h1>
+          <p className="text-lg text-[var(--netral-abu-abu)] mt-2">Temukan semua kebutuhan Anda di sini</p>
+        </div>
+
+        {/* Filter Kategori */}
+        <div className="mb-8">
+          <p className="text-sm font-semibold text-[var(--netral-hitam)] mb-3">Kategori</p>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === category
+                    ? 'bg-[var(--brand-coklat-sedang)] text-white'
+                    : 'bg-white text-[var(--netral-abu-abu)] hover:bg-gray-100 border'
+                }`}
+              >
+                {category}
+              </button>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-16">
-            <p className="text-[var(--netral-abu-abu)]" style={{ fontSize: '18px' }}>
-              Tidak ada produk yang ditemukan
-            </p>
+        </div>
+
+        {/* Tampilan Loading */}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-12 w-12 text-[var(--brand-coklat-sedang)] animate-spin" />
           </div>
+        ) : (
+          <>
+            {/* Jumlah Produk */}
+            <p className="text-sm text-[var(--netral-abu-abu)] mb-4">
+              Menampilkan {filteredProducts.length} produk
+            </p>
+
+            {/* Grid Produk */}
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 text-[var(--netral-abu-abu)]">
+                <p>Produk tidak ditemukan di kategori ini.</p>
+              </div>
+            )}
+          </>
         )}
+
       </div>
     </div>
   );

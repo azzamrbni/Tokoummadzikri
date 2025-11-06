@@ -1,53 +1,38 @@
-import { useState } from "react";
-import { Navbar } from "./components/Navbar";
-import { HomePage } from "./components/HomePage";
-import { ProductsPage } from "./components/ProductsPage";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { ProductDetailPage } from "./components/ProductDetailPage";
-import { AboutPage } from "./components/AboutPage";
-import { ContactPage } from "./components/ContactPage";
-import { Footer } from "./components/Footer";
-import { productsData } from "./data/products";
+import React, { useState, useEffect } from 'react'; // <-- Import useState & useEffect
+import { Outlet } from 'react-router-dom';
+import { Navbar } from './components/Navbar';
+import { SplashScreen } from './components/SplashScreen'; // <-- Import SplashScreen
+// import { Footer } from './components/Footer'; // (Jika Anda punya Footer)
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("home");
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleProductClick = (productId: number) => {
-    setSelectedProductId(productId);
-    setCurrentPage("product-detail");
-  };
+  useEffect(() => {
+    // Simulasikan waktu loading (misal: 1.5 detik)
+    // Anda bisa sesuaikan angkanya, atau ganti dengan logika loading data asli
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500); // 1500ms = 1.5 detik
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case "home":
-        return <HomePage onNavigate={setCurrentPage} onProductClick={handleProductClick} />;
-      case "products":
-        return <ProductsPage onProductClick={handleProductClick} />;
-      case "product-detail":
-        const product = productsData.find(p => p.id === selectedProductId);
-        if (product) {
-          return <ProductDetailPage product={product} onNavigate={setCurrentPage} />;
-        }
-        return <HomePage onNavigate={setCurrentPage} onProductClick={handleProductClick} />;
-      case "admin":
-        return <AdminDashboard />;
-      case "about":
-        return <AboutPage />;
-      case "contact":
-        return <ContactPage />;
-      default:
-        return <HomePage onNavigate={setCurrentPage} onProductClick={handleProductClick} />;
-    }
-  };
+    // Bersihkan timer saat komponen unmount
+    return () => clearTimeout(timer);
+  }, []); // [] berarti useEffect ini hanya berjalan 1x saat app dibuka
 
+  // --- LOGIKA TAMPILAN ---
+
+  // 1. Saat loading, tampilkan SplashScreen
+  if (isLoading) {
+    return <SplashScreen />;
+  }
+
+  // 2. Setelah loading selesai, tampilkan layout aplikasi Anda
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar onNavigate={setCurrentPage} currentPage={currentPage} />
-      <main className="flex-1">
-        {renderPage()}
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-grow">
+        <Outlet />
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

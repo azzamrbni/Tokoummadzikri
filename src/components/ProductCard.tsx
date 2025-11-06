@@ -1,40 +1,68 @@
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import React from 'react';
+import { Button } from './Button'; // Path sudah benar
+import { ImageWithFallback } from './figma/ImageWithFallback'; 
+import { Link } from 'react-router-dom'; 
 
-interface ProductCardProps {
-  image: string;
+// Definisikan tipe data Produk (sesuai database)
+interface Product {
+  id: number;
   title: string;
   description: string;
-  price?: string;
-  showPrice?: boolean;
-  onButtonClick?: () => void;
+  price: string;
+  category: string;
+  image: string;
 }
 
-export function ProductCard({ image, title, description, price, showPrice = true, onButtonClick }: ProductCardProps) {
+interface ProductCardProps {
+  product: Product;
+}
+
+const formatPrice = (price: string) => {
+  if (!price) return "Rp 0";
+  return `Rp ${parseInt(price).toLocaleString('id-ID')}`;
+};
+
+export function ProductCard({ product }: ProductCardProps) {
   return (
-    <div className="bg-white rounded-lg border border-[var(--netral-garis-batas)] overflow-hidden transition-shadow hover:shadow-lg">
-      <div className="aspect-square w-full overflow-hidden bg-[var(--brand-coklat-muda)]">
+    <Link 
+      to={`/produk/${product.id}`} 
+      className="flex flex-col bg-white rounded-lg border border-[var(--netral-garis-batas)] overflow-hidden transition-all hover:shadow-lg"
+    >
+      {/* Gambar Produk */}
+      <div className="w-full aspect-square overflow-hidden">
         <ImageWithFallback
-          src={image}
-          alt={title}
+          src={product.image}
+          alt={product.title}
           className="w-full h-full object-cover"
         />
       </div>
-      <div className="p-4 space-y-3">
-        <h3 className="text-[var(--brand-coklat-tua)]">{title}</h3>
-        <p className="text-[var(--netral-abu-abu)]">{description}</p>
-        <div className={showPrice ? "flex items-center justify-between" : "flex justify-end"}>
-          {showPrice && price && (
-            <p className="text-[var(--brand-coklat-sedang)]" style={{ fontWeight: 600, fontSize: '18px' }}>{price}</p>
-          )}
-          <button
-            onClick={onButtonClick}
-            className="px-6 py-3 bg-[var(--aksen-kuning-cerah)] text-[var(--netral-hitam)] rounded-lg transition-all hover:bg-[#F4C020] active:scale-95"
-            style={{ fontFamily: 'Montserrat', fontWeight: 600 }}
-          >
-            Selengkapnya
-          </button>
+
+      {/* Konten Teks */}
+      <div className="p-6 flex flex-col flex-grow">
+        <h3 className="text-xl font-semibold text-[var(--brand-coklat-tua)] mb-2">
+          {product.title}
+        </h3>
+        <p className="text-[var(--netral-abu-abu)] text-sm mb-4 line-clamp-3 flex-grow">
+          {product.description}
+        </p>
+        
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-lg font-bold text-[var(--brand-coklat-sedang)]">
+            {formatPrice(product.price)}
+          </span>
         </div>
+
+        {/* --- PERBAIKAN DI SINI ---
+           Kita pindahkan className="w-full mt-auto" ke <div> pembungkus 
+           karena <Button> tidak bisa menerimanya.
+        */}
+        <div className="w-full mt-auto">
+          <Button fullWidth> {/* Kita juga bisa tambahkan prop 'fullWidth' jika ada */}
+            Selengkapnya
+          </Button>
+        </div>
+        {/* --------------------------- */}
       </div>
-    </div>
+    </Link>
   );
 }
